@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>21點精緻版</title>
+  <style>
+    body {
+      background-color: #2b2b2b;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .game-table {
+      background-color: #006400;
+      border-radius: 12px;
+      padding: 20px;
+      display: inline-block;
+      margin: 20px auto;
+      box-shadow: 0 0 20px #000;
+    }
+
+    .hand {
+      margin: 20px;
+    }
+
+    .cards {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .card {
+      width: 70px;
+      height: 100px;
+      border-radius: 8px;
+      position: relative;
+      background-color: #fff;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+
+    .card .corner {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .card .corner.top {
+      align-self: flex-start;
+    }
+
+    .card .corner.bottom {
+      align-self: flex-end;
+      transform: rotate(180deg);
+    }
+
+    .card .suit {
+      font-size: 30px;
+      text-align: center;
+      margin-top: 5px;
+    }
+
+    /* 精緻牌背面 */
+    .card.back {
+      background: repeating-linear-gradient(
+        45deg,
+        #b30000,
+        #b30000 5px,
+        #800000 5px,
+        #800000 10px
+      );
+      background-size: cover;
+      position: relative;
+    }
+
+    .card.back::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border: 2px dashed #ffe;
+      border-radius: 6px;
+    }
+
+    .controls button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #ff9900;
+      color: #fff;
+      box-shadow: 0 2px 5px #000;
+    }
+
+    .controls button:hover {
+      background-color: #ff6600;
+    }
+
+    .status {
+      margin-top: 20px;
+      font-size: 18px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>♠️ 21點 你，敢玩嗎 ♠️</h1>
+
+  <div class="game-table">
+
+    <div class="hand">
+      <h2>莊家</h2>
+      <div class="cards" id="dealer-cards"></div>
+    </div>
+
+    <div class="hand">
+      <h2>玩家</h2>
+      <div class="cards" id="player-cards"></div>
+    </div>
+
+    <div class="controls">
+  <button id="start-button" onclick="startGame()">開始遊戲</button>
+  <button id="hit-button" onclick="hit()">要牌</button>
+  <button id="stand-button" onclick="stand()">停牌</button>
+</div>
+
+    <div class="status" id="status"></div>
+
+  </div>
+
+  <script>
+    let deck = [];
+    let playerHand = [];
+    let dealerHand = [];
+
+    function createDeck() {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      deck = [];
+      for (let suit of suits) {
+        for (let value of values) {
+          deck.push({ suit, value });
+        }
+      }
+    }
+
+    function shuffleDeck() {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function dealCard(hand) {
+      const card = deck.pop();
+      hand.push(card);
+      return card;
+    }
+function isBlackjack(hand) {
+  return hand.length === 2 && calculateHand(hand) === 21;
+}
+
+
+    function startGame() {
+  createDeck();
+  shuffleDeck();
+  playerHand = [];
+  dealerHand = [];
+  document.getElementById('status').textContent = '';
+
+  dealCard(playerHand);
+  dealCard(dealerHand);
+  dealCard(playerHand);
+  dealCard(dealerHand);
+
+  renderHands();
+  checkForBlackjack();
+
+  setControls(true);  // ← 開啟按鈕
+  document.getElementById('start-button').textContent = '重新開始';
+}
+
+    function renderHands(showDealerCards = false) {
+      const playerCardsDiv = document.getElementById('player-cards');
+      const dealerCardsDiv = document.getElementById('dealer-cards');
+
+      playerCardsDiv.innerHTML = '';
+      dealerCardsDiv.innerHTML = '';
+
+      playerHand.forEach(card => {
+        playerCardsDiv.appendChild(createCardElement(card));
+      });
+
+      dealerHand.forEach((card, index) => {
+        if (index === 0 && !showDealerCards && dealerHand.length >= 2) {
+          dealerCardsDiv.appendChild(createCardBack());
+        } else {
+          dealerCardsDiv.appendChild(createCardElement(card));
+        }
+      });
+    }
+
+    function createCardElement(card) {
+      const cardDiv = document.createElement('div');
+      cardDiv.className = 'card';
+
+      const topCorner = document.createElement('div');
+      topCorner.className = 'corner top';
+      topCorner.textContent = card.value + card.suit;
+      topCorner.style.color = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+      cardDiv.appendChild(topCorner);
+
+      const suitSymbol = document.createElement('div');
+      suitSymbol.className = 'suit';
+      suitSymbol.textContent = card.suit;
+      suitSymbol.style.color = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+      cardDiv.appendChild(suitSymbol);
+
+      const bottomCorner = document.createElement('div');
+      bottomCorner.className = 'corner bottom';
+      bottomCorner.textContent = card.value + card.suit;
+      bottomCorner.style.color = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+      cardDiv.appendChild(bottomCorner);
+
+      return cardDiv;
+    }
+
+    function createCardBack() {
+      const backDiv = document.createElement('div');
+      backDiv.className = 'card back';
+      return backDiv;
+    }
+
+    function hit() {
+  dealCard(playerHand);
+  renderHands();
+  let playerScore = calculateHand(playerHand);
+
+  if (playerHand.length === 5 && playerScore <= 21) {
+    renderHands(true);
+    document.getElementById('status').innerHTML = '五張牌不爆！你一條龍喔~<br>【請按重新開始】';
+    setControls(false);  // 關掉按鈕
+    return;
+  }
+
+  if (playerScore > 21) {
+    renderHands(true);
+    document.getElementById('status').innerHTML = 'BOOM！！！SEE U.<br>【請按重新開始】';
+    setControls(false);  // 關掉按鈕
+    return;
+  }
+}
+
+    async function stand() {
+  while (calculateHand(dealerHand) < 17 && dealerHand.length < 5) {
+    dealCard(dealerHand);
+    renderHands();
+    await delay(600);
+  }
+
+  renderHands(true);
+
+  const playerScore = calculateHand(playerHand);
+  const dealerScore = calculateHand(dealerHand);
+  const playerBJ = isBlackjack(playerHand);
+  const dealerBJ = isBlackjack(dealerHand);
+
+  let result = '';
+
+  if (dealerBJ && playerBJ) {
+    result = '雙方Blackjack！什麼鬼！<br>【請按重新開始】';
+  } else if (playerBJ) {
+    result = '你贏啦，還Blackjack！<br>【請按重新開始】';
+  } else if (dealerBJ) {
+    result = '莊家Blackjack！你輸了QQ<br>【請按重新開始】';
+  } else if (dealerScore > 21) {
+    result = '莊家爆了，你運氣不錯喔~<br>【請按重新開始】';
+  } else if (dealerHand.length === 5 && dealerScore <= 21) {
+    result = '莊家五張牌不爆！嘖嘖可憐...<br>【請按重新開始】';
+  } else if (playerScore > dealerScore) {
+    result = '你贏餒~齁齁齁<br>【請按重新開始】';
+  } else if (playerScore < dealerScore) {
+    result = '你輸光QQ！<br>【請按重新開始】';
+  } else {
+    result = 'DRAW<br>【請按重新開始】';
+  }
+
+  document.getElementById('status').innerHTML = result;
+  setControls(false);
+}
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function calculateHand(hand) {
+      let total = 0;
+      let aces = 0;
+      hand.forEach(card => {
+        if (card.value === 'A') {
+          aces++;
+          total += 11;
+        } else if (['K', 'Q', 'J'].includes(card.value)) {
+          total += 10;
+        } else {
+          total += parseInt(card.value);
+        }
+      });
+      while (total > 21 && aces > 0) {
+        total -= 10;
+        aces--;
+      }
+      return total;
+    }
+function setControls(active) {
+  document.getElementById('hit-button').disabled = !active;
+  document.getElementById('stand-button').disabled = !active;
+}
+
+
+    function checkForBlackjack() {
+      const playerScore = calculateHand(playerHand);
+      const dealerScore = calculateHand(dealerHand);
+
+      if (playerScore === 21) {
+        renderHands(true);
+        document.getElementById('status').textContent = 'Blackjack！誰，怪盜基德';
+      }
+    }
+  </script>
+
+</body>
+</html> 
+
